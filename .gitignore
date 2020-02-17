@@ -1,0 +1,6 @@
+.*.swp
+Terraform/aws-credentials.ini
+Terraform/ocp-ssh*
+Terraform/.terraform
+*.tfstate
+*.tfstate.backup
