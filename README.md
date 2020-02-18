@@ -59,6 +59,35 @@ To successfully deploy the cluster some elements are needed besides the AWS infr
 
 The whole process can be automated using the ansible playbook **privsetup.yaml**, this playbook prepares de bastion host created with terraform registering it with Red Hat; copying the OCP installer and _oc_ command, and creating the install-config.yaml file generated from a template using variables created by terraform.
 
+The template used to create the install-config.yaml configuration file uses some advance contructions:
+
+* Regular expresion filter.- The base_dns_domain variable from terraform includes a dot (.) at the end, that has to be removed, otherwise the cluster installation fails, for that a regular expresion filter is used:
+
+
+```
+baseDomain: {{ base_dns_domain | regex_replace('(.*)\.$' '\\1') }}
+```
+
+* for loops.- The variable containing the values is *availability_zones*, it comes from terraform and ansible understands it as a list in its original form, except for the substitution of the equal sign for the colom:
+
+```
+availability_zones : [
+  "eu-west-1a",
+  "eu-west-1b",
+]
+```
+
+```
+{% for item in availability_zones %}
+        - {{ item }}
+{% endfor %}
+```
+* Content from another file.- The pull secret and ssh key is loaded from another file:
+
+```
+pullSecret: '{{ lookup('file', './pull-secret') }}'
+```
+
 #### Running the ansible playbook
 
 Review the file **group_vars/all/cluster-vars** and modify the value of the variables to the requirements for the cluster:
