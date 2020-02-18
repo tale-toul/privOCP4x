@@ -1,0 +1,52 @@
+---
+- name: Local actions for localhost
+  hosts: 127.0.0.1
+  connection: local
+  become: no
+  tasks:
+    - name: Remove stale entries from known_hosts file in the ansible host
+      command: ssh-keygen -R {{ item }}
+      with_items: "{{ groups['all'] }}"
+    - name: Save terraform variables to a file
+      shell: terraform output |tr '=' ':' > ../Ansible/group_vars/all/terraform_outputs.var
+      args:
+        chdir: ../Terraform
+- name: Setup bastion host
+  hosts: bastion
+  tasks:
+    - name: Load terraform output variables
+      include_vars:
+        file: group_vars/all/terraform_outputs.var
+    - name: Assing a FQDN name to the bastion host
+      hostname:
+          name: "{{ inventory_hostname }}"
+    - name: Register server with Red Hat
+      redhat_subscription:
+          state: present
+          username: "{{ subscription_username }}"
+          password: "{{ subscription_password }}"
+          pool_ids: 8a85f9833e1404a9013e3cddf99305e6
+    - name: Copy the installer to bastion
+      copy:
+        src: installer/openshift-install
+        dest: privOCP4/
+        owner: ec2-user
+        mode: '0755'
+    - name: Copy the oc command to bastion
+      copy:
+        src: oc
+        dest: privOCP4/
+        owner: ec2-user
+        mode: '0755'
+    - name: Create ocp4 directory
+      file:
+        path: privOCP4/ocp4
+        state: directory
+        owner: ec2-user
+        mode: '0750'
+    - name: Render install-config jinja2 template
+      template:
+        src: install-config.j2
+        dest: privOCP4/ocp4/install-config.yaml
+        mode: 0644
+...     

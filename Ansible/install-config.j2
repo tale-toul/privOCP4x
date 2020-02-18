@@ -1,0 +1,44 @@
+apiVersion: v1
+baseDomain: {{ base_dns_domain | regex_replace('(.*)\.$' '\\1') }}
+compute:
+- hyperthreading: Enabled
+  name: worker
+  platform: 
+    aws:
+      zones:
+{% for item in availability_zones %}
+        - {{ item }}
+{% endfor %}
+  replicas: {{ compute_nodes }}
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  platform: 
+    aws:
+      zones:
+{% for item in availability_zones %}
+        - {{ item }}
+{% endfor %}
+  replicas: {{ master_nodes }}
+metadata:
+  creationTimestamp: null
+  name: {{ cluster_name }}
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineCIDR: {{ vpc_cidr }}
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: {{ region_name }}
+    subnets:
+{% for item in private_subnets %}
+        - {{ item }}
+{% endfor %}
+publish: Internal
+pullSecret: '{{ lookup('file', './pull-secret') }}'
+sshKey: |
+  {{ lookup('file', '../Terraform/ocp-ssh.pub') }}

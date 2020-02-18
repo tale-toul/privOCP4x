@@ -12,6 +12,12 @@ variable "region_name" {
   default = "eu-west-1"
 }
 
+variable "domain_name" {
+  description = "Public DNS domain name" 
+  type = string
+  default = "tale"
+}
+
 variable "cluster_name" {
   description = "Cluster name, used to define Clusterid tag and as part of other component names"
   type = string
@@ -71,9 +77,15 @@ variable "rhel7-ami" {
   }
 }
 
+variable "vpc_cidr" {
+  description = "Network segment for the VPC"
+  type = string
+  default = "172.20.0.0/16"
+}
+
 #VPC
 resource "aws_vpc" "vpc" {
-    cidr_block = "172.20.0.0/16"
+    cidr_block = var.vpc_cidr
     enable_dns_hostnames = true
     enable_dns_support = true
 
@@ -304,7 +316,7 @@ data "aws_route53_zone" "domain" {
 
 #External hosted zone, this is a public zone because it is not associated with a VPC
 resource "aws_route53_zone" "external" {
-  name = "${var.cluster_name}ext.${data.aws_route53_zone.domain.name}"
+  name = "${var.domain_name}.${data.aws_route53_zone.domain.name}"
 
   tags = {
     Name = "external"
@@ -314,7 +326,7 @@ resource "aws_route53_zone" "external" {
 
 resource "aws_route53_record" "external-ns" {
   zone_id = data.aws_route53_zone.domain.zone_id
-  name    = "${var.cluster_name}ext.${data.aws_route53_zone.domain.name}"
+  name    = "${var.domain_name}.${data.aws_route53_zone.domain.name}"
   type    = "NS"
   ttl     = "30"
 
@@ -340,17 +352,13 @@ output "bastion_public_ip" {
  value       = aws_instance.tale_bastion.public_ip  
  description = "The public IP address of bastion server"
 }
+output "base_dns_domain" {
+  value     = aws_route53_zone.external.name
+  description = "Base DNS domain for the OCP cluster"
+}
 output "bastion_dns_name" {
   value = aws_route53_record.bastion.fqdn
   description = "DNS name for bastion host"
-}
-output "ssh_key" {
-  value = "${path.module}/${var.ssh-keyfile}"
-  description = "EC2 ssh key local file path"
-}
-output "ext_public_domain" {
-  value = aws_route53_zone.external.name
-  description="external DNS domain"
 }
 output "cluster_name" {
  value = var.cluster_name
@@ -367,4 +375,16 @@ output "availability_zones" {
 output "private_subnets" {
   value = aws_subnet.subnet_priv[*].id
   description = "Names of the private subnets"
+}
+output "vpc_cidr" {
+  value = var.vpc_cidr
+  description = "Network segment for the VPC"
+}
+output "public_subnet_cidr_block" {
+  value = aws_subnet.subnet_pub[*].cidr_block
+  description = "Network segments for the public subnets"
+}
+output "private_subnet_cidr_block" {
+  value = aws_subnet.subnet_priv[*].cidr_block
+  description = "Network segments for the private subnets"
 }

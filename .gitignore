@@ -4,3 +4,8 @@ Terraform/ocp-ssh*
 Terraform/.terraform
 *.tfstate
 *.tfstate.backup
+Ansible/ansible.log
+Ansible/group_vars/all/terraform_outputs.var
+Ansible/inventory
+Ansible/vault-id
+Ansible/pull-secret
