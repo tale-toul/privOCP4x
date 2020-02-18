@@ -57,6 +57,8 @@ To successfully deploy the cluster some elements are needed besides the AWS infr
 
 * Pull secret.- The pull secret can be obtained [here](https://cloud.redhat.com/openshift/install)
 
+* Installer program.- This can be downloaded from the same [site](https://cloud.redhat.com/openshift/install) as the pull secret
+
 The whole process can be automated using the ansible playbook **privsetup.yaml**, this playbook prepares de bastion host created with terraform registering it with Red Hat; copying the OCP installer and _oc_ command, and creating the install-config.yaml file generated from a template using variables created by terraform.
 
 The template used to create the install-config.yaml configuration file uses some advance contructions:
@@ -92,8 +94,10 @@ pullSecret: '{{ lookup('file', './pull-secret') }}'
 
 Review the file **group_vars/all/cluster-vars** and modify the value of the variables to the requirements for the cluster:
 
-* compute_nodes.- number of compute nodes to create
-* master_nodes.- number of master nodes to create
+* compute_nodes.- number of compute nodes to create, by default 3
+* compute_instance_type.- The type of AWS instance that will be used to create the compute nodes, by default m4.large 
+* master_nodes.- number of master nodes to create, by default 3
+* master_instance_type: The type of AWS instance that will be used to create the master nodes, by default m4.large m4.xlarge 
 
 Create a file in group_vars/all/ with the credentials of a Red Hat portal user with permission to register a host (this may not be absolutely neccessary since the playbook does not install any packages in the bastion host). An example of the contents of the file:
 
@@ -110,6 +114,12 @@ Create the inventory file with the _bastion_ group and the name of the bastion h
 bastion.olivka.example.com
 ```
 Download the pull secret from [here](https://cloud.redhat.com/openshift/install) and save in a file called pull-secret in the Ansible directory.
+
+Download the oc client and installer from the same [site](https://cloud.redhat.com/openshift/install)
+
+Uncompress the client in the Ansible directory
+
+Uncompress the installer in Ansible/installer/ 
 
 Before running the playbook add the ssh key used by terraform to the ssh agent:
 

@@ -9,3 +9,5 @@ Ansible/group_vars/all/terraform_outputs.var
 Ansible/inventory
 Ansible/vault-id
 Ansible/pull-secret
+Ansible/oc
+Ansible/installer/openshift-install

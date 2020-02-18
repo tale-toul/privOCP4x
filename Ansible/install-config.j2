@@ -5,6 +5,7 @@ compute:
   name: worker
   platform: 
     aws:
+      type: {{ compute_instance_type }}
       zones:
 {% for item in availability_zones %}
         - {{ item }}
@@ -15,6 +16,7 @@ controlPlane:
   name: master
   platform: 
     aws:
+      type: {{ master_instance_type }}
       zones:
 {% for item in availability_zones %}
         - {{ item }}
