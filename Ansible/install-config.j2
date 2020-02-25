@@ -1,5 +1,11 @@
 apiVersion: v1
 baseDomain: {{ base_dns_domain | regex_replace('(.*)\.$' '\\1') }}
+{% if enable_proxy|bool %}
+proxy:
+  httpProxy: http://{{bastion_private_ip}}:3128
+  httpsProxy: http://{{bastion_private_ip}}:3128
+  noProxy: {{ vpc_cidr }}
+{% endif %}
 compute:
 - hyperthreading: Enabled
   name: worker

@@ -49,4 +49,22 @@
         src: install-config.j2
         dest: privOCP4/ocp4/install-config.yaml
         mode: 0644
+    - name: Activate squid proxy 
+      block:
+        - name: Install squid packages
+          yum:
+            name:
+              - squid
+            state: latest
+        - name: Add localnet to squid config file
+          lineinfile:
+            path: /etc/squid/squid.conf
+            insertafter: '^acl localnet'
+            line: 'acl localnet src {{ vpc_cidr }} #Included by Ansible for VPC access'
+        - name: start squid service
+          service:
+            name: squid
+            state: started
+            enabled: yes
+      when: enable_proxy|bool
 ...     
