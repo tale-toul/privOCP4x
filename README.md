@@ -1,6 +1,25 @@
-# PRIVATE OCP 4.3 cluster 
+# PRIVATE OCP 4.3 cluster on AWS
 
-Create a VPC on AWS and deploy an OCP 4.3 cluster in it.
+## Table of contents
+
+* [Introduction](#introduction)
+* [VPC creation](#vpc-creation)
+  * [Terraform installation](#terraform-installation)
+    * [Variables](#variables)
+    * [Endpoints](#endpoints)
+    * [Proxy configuration](#proxy-configuration)
+  * [Deploying the infrastructure with terraform](#deploying-the-infrastructure-with-terraform)
+* [Bastion setup with Ansible](#bastion-setup-with-ansible)
+  * [Proxy configuration](#proxy-configuration)
+    * [Running the ansible playbook](#running-the-ansible-playbook)
+    * [Template constructions](#template-constructions)
+* [OCP cluster deployment](#ocp-cluster-deployment)
+* [Cluster decommissioning instructions](#cluster-decommissioning-instructions)
+* [Accessing the cluster](#accessing-the-cluster)
+
+## Introduction
+
+Create a VPC on AWS and deploy an OCP 4.3 cluster in it, this cluster is not directly accessible from the Internet, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
 [Reference documentation](https://docs.openshift.com/container-platform/4.3/installing/installing_aws/installing-aws-private.html#installing-aws-private)
 
