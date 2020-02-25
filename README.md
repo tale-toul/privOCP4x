@@ -3,6 +3,7 @@
 ## Table of contents
 
 * [Introduction](#introduction)
+* [Full cluster installation](#full-cluster-installation)
 * [VPC creation](#vpc-creation)
   * [Terraform installation](#terraform-installation)
     * [Variables](#variables)
@@ -22,6 +23,16 @@
 Create a VPC on AWS and deploy an OCP 4.3 cluster in it, this cluster is not directly accessible from the Internet, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
 [Reference documentation](https://docs.openshift.com/container-platform/4.3/installing/installing_aws/installing-aws-private.html#installing-aws-private)
+
+## Full cluster installation
+
+The installation of the whole cluster is divided in 3 steps, click the following links in order to go to the specific sections: 
+
+* [Create VPC insfrastructure with terraform](#deploying-the-infrastructure-with-terraform)
+
+* [Set up bastion host](#running-the-ansible-playbook)
+
+* [Install Openshift](#ocp-cluster-deployment)
 
 ## VPC creation
 
