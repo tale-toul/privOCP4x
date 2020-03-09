@@ -35,12 +35,6 @@ variable "ssh-keyfile" {
   default = "ocp-ssh.pub"
 }
 
-variable "ssh-keyname" {
-  description = "Name of the key that will be imported into AWS"
-  type = string
-  default = "ssh-key"
-}
-
 variable "dns_domain_ID" {
   description = "Zone ID for the route 53 DNS domain that will be used for this cluster"
   type = string

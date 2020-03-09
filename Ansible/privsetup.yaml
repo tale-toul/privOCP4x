@@ -8,13 +8,15 @@
       command: ssh-keygen -R {{ item }}
       with_items: "{{ groups['all'] }}"
     - name: Save terraform variables to a file
-      shell: terraform output |tr '=' ':' > ../Ansible/group_vars/all/terraform_outputs.var
+      when: terraform_created is defined and terraform_created|bool
+      shell: terraform output |tr '=' ':' > ../../privOCPVPC/Ansible/group_vars/all/terraform_outputs.var
       args:
         chdir: ../Terraform
 - name: Setup bastion host
   hosts: bastion
   tasks:
     - name: Load terraform output variables
+      when: terraform_created is defined and terraform_created|bool
       include_vars:
         file: group_vars/all/terraform_outputs.var
     - name: Assing a FQDN name to the bastion host

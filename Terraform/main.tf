@@ -5,6 +5,18 @@ provider "aws" {
   shared_credentials_file = "aws-credentials.ini"
 }
 
+#This is only used to generate random values
+provider "random" {
+  version = "~> 2.2"
+}
+
+#Provides a source to create a short random string 
+resource "random_string" "sufix_name" {
+  length = 5
+  upper = false
+  special = false
+}
+
 #VPC
 resource "aws_vpc" "vpc" {
     cidr_block = var.vpc_cidr
@@ -193,7 +205,7 @@ resource "aws_route" "internet_access" {
   count = var.enable_proxy ? 0 : local.private_subnet_count
   route_table_id = aws_route_table.rtable_priv[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_nat_gateway.natgw[count.index].id
+  nat_gateway_id = aws_nat_gateway.natgw[count.index].id
 }
 
 #Route table associations 
@@ -287,7 +299,7 @@ resource "aws_security_group" "sg-all-out" {
 ##EC2s
 ##SSH key
 resource "aws_key_pair" "ssh-key" {
-  key_name = var.ssh-keyname
+  key_name = "ssh-key-${random_string.sufix_name.result}"
   public_key = file("${path.module}/${var.ssh-keyfile}")
 }
 
@@ -316,7 +328,8 @@ data "aws_route53_zone" "domain" {
   zone_id = var.dns_domain_ID
 }
 
-#External hosted zone, this is a public zone because it is not associated with a VPC
+#External hosted zone, this is a public zone because it is not associated with a VPC. 
+#It is used to resolve the bastion name 
 resource "aws_route53_zone" "external" {
   name = "${var.domain_name}.${data.aws_route53_zone.domain.name}"
 

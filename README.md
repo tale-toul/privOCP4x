@@ -4,6 +4,7 @@
 
 * [Introduction](#introduction)
 * [Full cluster installation](#full-cluster-installation)
+* [Deploying a cluster in an existing VPC](#Deploying-a-cluster-in-an-existing-VPC)
 * [VPC creation](#vpc-creation)
   * [Terraform installation](#terraform-installation)
     * [Variables](#variables)
@@ -30,9 +31,40 @@ The installation of the whole cluster is divided in 3 steps, click the following
 
 * [Create VPC insfrastructure with terraform](#deploying-the-infrastructure-with-terraform)
 
-* [Set up bastion host](#running-the-ansible-playbook)
+* [Set up the bastion host](#running-the-ansible-playbook)
 
 * [Install Openshift](#ocp-cluster-deployment)
+
+## Deploying a cluster in an existing VPC
+
+If the cluster is to be deployed in an existing VPC, possibly sharing the resources with another cluster, the terraform creation part will be skipped and only the Ansible part will be run.
+
+There are some requirements:
+
+* A bastion host must be running in the VPC and accesible from the ansible control host, and the ssh key to connect to it must be available.
+
+* The following variables must be defined either in a file located in the directory **Ansible/group_vars/all/**, the name of the file is not important; or appended as extra variables to the ansible command.  When creating the infrastructure with terraform, most of these variables are defined as output vars, but in this case they need to be provided by other means to the ansible playbook that prepares the cluster installation environment:
+
+  * terraform_created.- Boolean defining if the infrastructure was created by terraform and therefore ansible can read the variables from it.  Default values is true.  Use _false_ when deploying on an existing VPC
+  * base_dns_domain.- String defining the base domain of your cloud provider. This value is used to create routes to your OpenShift Container Platform cluster components. The full DNS name for your cluster is a combination of the baseDomain and *cluster_name* parameter values that uses the <cluster_name>.<baseDomain> format.  The subdomain will be created but the parent domain must exist, or example for abbyext.example.com, example.com must already exist, and abbyext will be created.   
+  * enable_proxy.- Boolean defining if a proxy will be setup as the only means to access the Internet from the cluster.  Default is false, no proxy is created and the cluster will try to access the Internet directly.  If set to true a proxy will be setup on the bastion and the cluster will access the Internet through it.
+  * availability_zones.- List of availability zones where the VPC has public and private subnets and where cluster nodes will be located.  This list does not need to include all availability zones, only the ones where nodes will be placed.
+  * cluster_name.- String defining a name for the cluster.
+  * vpc_cidr.- Network address space of the VPC.
+  * region_name.- The AWS region name where the VPC resides.
+  * private_subnets.- List of _private_ subnet ids already existing in the VPC where cluster components will be created. These subnets must exist in the availability zones declared with the variable *availability_zones* in the same command line.
+
+An example execution with the variables defined on the command like follows:
+
+```shell
+$ ansible-playbook -i inventory privsetup.yaml --vault-id vault-id -e terraform_created=false -e base_dns_domain=example.com -e enable_proxy=false -e '{"availability_zones": ["eu-west-1a","eu-west-1b"]}' -e cluster_name=rhpnt -e vpc_cidr="172.20.0.0/16" -e region_name="eu-west-1" -e '{"private_subnets":["subnet-0ea3ec602f2e0baee", "subnet-0b032d4c5b631a6ea"]}'
+```
+When the variables are defined follow the instruction in the following sections:
+
+* [Set up the bastion host](#running-the-ansible-playbook)
+
+* [Install Openshift](#ocp-cluster-deployment)
+
 
 ## VPC creation
 
@@ -66,11 +98,11 @@ Check that it is working:
  # terraform --version
 ```
 
-#### Variables
+### Variables
 
 All input variables and locals are defined in a separate file _Teraform/input-vars.tf_.  This file can be used as reference to know what components of the VPC or bastion can be specified at the time of creation.
 
-#### Endpoints
+### Endpoints
 
 A best practice when deploying the VPC is creating endpoints for all the AWS services that are used by the OCP cluster, this will improve security and speed since the communications between the cluster and these services never live the AWS internal network.  The use of endpoints is a must in case the cluster only access to the Internet is via a proxy server.
 
@@ -78,8 +110,10 @@ The AWS services used by OCP and available as endpoints are:
 
 * s3.- Of type Gateway, is associated with all route tables defined in subnets where the it will be used.
 * ec2 and elastic load balancing.- Of type Interface, requires private dns enabled, is associated with the subnets where it will be used, with the limitation of only one subnet per availability zone.  Also security groups must be assigned to them to define what ports are allowed from where.
+* elastic load balancing.- Of type Interface, requires private dns enabled, is associated with the subnets where it will be used, with the limitation of only one subnet per availability zone.  Also security groups must be assigned to them to define what ports are allowed from where.
 
-#### Proxy configuration
+
+### Proxy configuration
 
 If the access from the cluster nodes to the wider Internet will be routed through a proxy server the variable **enable_proxy** must be set to true, by default is false.  This variable is used in several conditional expressions to decide on the configuration of some components:
 
@@ -131,7 +165,7 @@ $ terraform apply -var="subnet_count=2" -var="domain_name=kali" -var="cluster_na
 Save the value of the variables used in this step becasuse the same values will be required in case the infrastructure wants to be destroyed with the **terrafor destroy** command.  In the example the use of !! assumes that no other command has been executed after _terraform apply_:
 
 ```
-$ echo "!!" > terrafor_apply.txt
+$ echo "!!" > terraform_apply.txt
 ```
 
 ## Bastion setup with Ansible
@@ -175,6 +209,7 @@ proxy:
 
 Review the file **group_vars/all/cluster-vars** and modify the value of the variables to the requirements for the cluster:
 
+* terraform_created.- Boolean signaling that the infrastructure was created by terraform and the output variables it generates can be used by ansible. By default is true, when false, ansible will not try to read terraform output vars.
 * compute_nodes.- number of compute nodes to create, by default 3
 * compute_instance_type.- The type of AWS instance that will be used to create the compute nodes, by default m4.large 
 * master_nodes.- number of master nodes to create, by default 3
@@ -202,7 +237,7 @@ Uncompress the client in the Ansible directory
 
 Uncompress the installer in Ansible/installer/ 
 
-Before running the playbook add the ssh key used by terraform to the ssh agent:
+Add the ssh key used by terraform to the ssh agent:
 
 ```shell
 $ ssh-add ../Terraform/ocp-ssh

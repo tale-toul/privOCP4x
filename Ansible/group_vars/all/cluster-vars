@@ -1,3 +1,4 @@
+terraform_created: true
 compute_nodes: 3
 compute_instance_type: m4.large 
 master_nodes: 3
