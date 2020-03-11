@@ -37,9 +37,9 @@ The installation of the whole cluster is divided in 3 steps, click the following
 
 ## Deploying a cluster in an existing VPC
 
-If the cluster is to be deployed in an existing VPC, possibly sharing the resources with another cluster, the terraform creation part will be skipped and only the Ansible part will be run.
+If the cluster is to be deployed in an existing VPC, possibly sharing it with other clusters, the terraform creation part will be skipped and only the Ansible part will be run.
 
-One thing to keep in mind is that two or more cluster can be installed in the same VPC, but the DNS zones must be different for each one of them.  If the clusters are deployed in different VPCs, then the private DNS zones could use the same domain but not the public zone, so only a private cluster coult be deployed on a different VPC using the same private DNS zone, and only because the private OCP cluster does not create public resources. 
+One thing to keep in mind is that two or more cluster can be installed in the same VPC, but the DNS zones must be different for each one of them.  If the clusters are deployed in different VPCs, then the private DNS zones could use the same domain but not the public zone, so only a private cluster could be deployed on a different VPC using the same private DNS zone, and only because the private OCP cluster does not create public resources. 
 
 There are some requirements:
 
