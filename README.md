@@ -46,7 +46,7 @@ There are some requirements:
 
 * A bastion host must be running in the VPC and accesible from the ansible control host, and the ssh key to connect to it must be available.
 
-* The following variables must be defined either in a file located in the directory **Ansible/group_vars/all/**, the name of the file is not important; or appended as extra variables to the ansible command.  When creating the infrastructure with terraform, most of these variables are defined as output vars, but in this case they need to be provided by other means to the ansible playbook that prepares the cluster installation environment:
+* The following ansible variables must be defined either in a file located in the directory **Ansible/group_vars/all/**, the name of the file is not important; or appended as extra variables to the ansible command.  When creating the infrastructure with terraform, most of these variables are defined as output vars, but in this case they need to be provided by other means to the ansible playbook that prepares the cluster installation environment:
 
   * terraform_created.- Boolean defining if the infrastructure was created by terraform and therefore ansible can read the variables from it.  Default values is true.  Use _false_ when deploying on an existing VPC
   * base_dns_domain.- String defining the base domain of your cloud provider.  The full DNS name for your cluster is a combination of the **base domain** and *cluster_name* parameters that uses the <cluster_name>.<baseDomain> format.  The subdomain will be created but the parent domain must exist, for example for abbyext.example.com, example.com must already exist, and abbyext will be created. The DNS zone <cluster_name>.<baseDomain> is a private zone, records will be added to this zone only, not the public **base domain**.
@@ -158,7 +158,9 @@ resource "aws_route" "internet_access" {
 
 ### Deploying the infrastructure with terraform
 
-Terraform is used to create the infrastructure components of the VPC, some of these components can be adjusted via the use of variables defined in the file _Terrafomr/input-vars.tf_, like the number of subnets, if a proxy will be used to manage connections from the cluster to the Internet, the name of the cluster, the name of the DNS subdomain to use, etc.: 
+Terraform is used to create the infrastructure components of the VPC, some of these components can be adjusted via the use of variables defined in the file _Terrafomr/input-vars.tf_, like the number of subnets, if a proxy will be used to manage connections from the cluster to the Internet, the name of the cluster, the name of the DNS subdomain to use, etc.  
+
+The DNS base domain for the cluster, created by terraform, is built from two variables: the domain defined in dns_domain_ID and the subdomain defined in domain_name.  The cluster domain created by the IPI installer will be created adding the cluster name to the base domain.  For example for a dns_domain_ID referencing "example.com", a domain_name=avery, and cluster_name=tiesto, the base domain is avery.example.com and the cluster domain is tiesto.avery.example.com: 
 
 ```shell
 $ cd Terraform
@@ -189,7 +191,7 @@ The setup process can be automated using the ansible playbook **privsetup.yaml**
 
 ### Proxy configuration
 
-The same variable used by terraform to enable the proxy is used by ansible, read from the output variables stored in the file *_Ansible/group_vars/all/terraform_outputs.var*.  If this boolean variable is set to true, a block of tasks is executed to install, setup and enable the proxy squid service.  The setup of squid just consists of adding an ACL line with the network range of the VPC, so any host with an IP in the VPC can access the Internet through the proxy, no authentication is required:
+The same variable used by terraform to enable the proxy is used by ansible, read from the output variables stored in the file *Ansible/group_vars/all/terraform_outputs.var*.  If this boolean variable is set to true, a block of tasks is executed to install, setup and enable the proxy squid service.  The setup of squid just consists of adding an ACL line with the network range of the VPC, so any host with an IP in the VPC can access the Internet through the proxy, no authentication is required:
 ```
  - name: Add localnet to squid config file
    lineinfile:
@@ -317,13 +319,13 @@ $ terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_
 
 Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory.
 
-It is also possible to access the cluster from outside the VPC creating an ssh tunnel through the bastion host.  Create a tunnel from the current host, through the bastion, to the internal master API load balancer with the following commands.  Since the start of the tunnel uses priviledged ports, the commands must be run as root.  The ssh private key added to the session is the same one injected into the nodes by terraform:
+It is also possible to access the cluster applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the start of the tunnel uses priviledged ports, the commands must be run as root.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  Any hostname in the apps subdomain is valid:
 
 ```
  # ssh-agent bash
  # ssh-add Terraform/ocp-ssh
- # ssh -fN -L 80:console-openshift-console.apps.lentisco.tangai.rhcee.support:80 ec2-user@bastion.tangai.rhcee.support
- # ssh -fN -L 443:console-openshift-console.apps.lentisco.tangai.rhcee.support:443 ec2-user@bastion.tangai.rhcee.support
+ # ssh -fN -L 80:console-openshift-console.apps.lentisco.tangai.example.com:80 ec2-user@bastion.tangai.rhcee.support
+ # ssh -fN -L 443:console-openshift-console.apps.lentisco.tangai.example.com:443 ec2-user@bastion.tangai.rhcee.support
 ```
 Next add entries to /etc/hosts with the names that will be used to access the URL, for example to access the web console: 
 ```
