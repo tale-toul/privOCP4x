@@ -2,10 +2,12 @@
 Terraform/aws-credentials.ini
 Terraform/ocp-ssh*
 Terraform/.terraform
+Terraform/terraform_apply.txt
 *.tfstate
 *.tfstate.backup
 Ansible/ansible.log
 Ansible/group_vars/all/terraform_outputs.var
+Ansible/group_vars/all/secrets
 Ansible/inventory
 Ansible/vault-id
 Ansible/pull-secret

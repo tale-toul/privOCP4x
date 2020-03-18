@@ -18,6 +18,7 @@
 * [OCP cluster deployment](#ocp-cluster-deployment)
 * [Cluster decommissioning instructions](#cluster-decommissioning-instructions)
 * [Accessing the cluster](#accessing-the-cluster)
+  * [Turning the private cluster public](#turning-the-private-cluster-public)
 
 ## Introduction
 
@@ -317,9 +318,9 @@ $ terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_
 
 ## Accessing the cluster
 
-Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory.
+Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory, or a web browser for accessing the applications.
 
-It is also possible to access the cluster applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the start of the tunnel uses priviledged ports, the commands must be run as root.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  Any hostname in the apps subdomain is valid:
+It is also possible to access the cluster applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  Any hostname in the apps subdomain is valid:
 
 ```
  # ssh-agent bash
@@ -332,4 +333,57 @@ Next add entries to /etc/hosts with the names that will be used to access the UR
 127.0.0.1 console-openshift-console.apps.lentisco.tangai.rhcee.support
 127.0.0.1 oauth-openshift.apps.lentisco.tangai.rhcee.support
 ```
-Now it is possible to access the cluster's web consolu using the URL `https://console-openshift-console.apps.lentisco.tangai.rhcee.support`
+Now it is possible to access the cluster's web console using the URL `https://console-openshift-console.apps.lentisco.tangai.rhcee.support`
+
+### Turning the private cluster public
+
+It is possible to modify the configuration of the OCP cluster to be able to access the applications from the Internet in a permanent way, without the need of tricks like ssh tunnels.
+
+The procedure consists on replacing the internal applications load balancer create by the control plane during installation by a public applications load balancer, and also adding a DNS entry **.apps.<cluster name>** to a public DNS zone hosting the cluster base domain.
+
+* **Create public subnets**.- If the cluster does not already have a public subnet in every availability zone where a private subnet already exist, these must be created, each public subnet must get a CIDR network space that is free, not being used by another subnet, within the VPC CIDR space.  Each public subnet must have an association with a route table that has a default route to the VPC's Internet Gateway.
+
+* **Put the public subnets under OCP control**.- The OCP cluster, being private, does not know that it must take control of a set of public subnets.  To make the cluster aware of the public subnets, a particular tag must be added to the subnets.  The tag is created for most of the AWS resources during cluster installation and has the format **kubernetes.io/cluster/<clustername>-<random string>=shared**.  The particular value for a cluster can be obtainend from the private subnets, for example.  This same tag must be added to the public subnets.
+
+* **DNS configuration**.- An public DNS entry with the format __*.apps.<cluster name>.<base domain>__ needs to be created in the _base domain_ DNS public zone.  If the _base domain_ DNS zone is not public, a new public zone with the same name must be created, otherwise the DNS names of the applications will not be resolvable from the Internet.  Note that the __*.apps.<cluster name>__ entry is created in the _base domain_ public zone, not in the __<cluster name>.<base domain>__ private zone.
+
+* **Create default ingress controller manifest**.- The default ingress controller provides access to the applications deployed in the cluster and accessed under in the DNS domain _*.apps_.  One of the components that it creates and controlls is a load balancer, in the case of a private cluster this load balancer is created in the private subnets and is not accesible from the Internet.  Extract the default ingress controller configuration:
+
+```shell
+$ oc get ingresscontroller default -n openshift-ingress-operator -o yaml > default-ingress-controller.yaml
+```
+
+  Edit the file and remove the whole status section, and in the metadate section just leave the name and namespace entries.  The result should look similar to this:
+
+```yaml
+apiVersion: operator.openshift.io/v1
+kind: IngressController
+metadata:
+  name: default
+  namespace: openshift-ingress-operator
+spec:
+  endpointPublishingStrategy:
+    loadBalancer:
+      scope: Internal
+    type: LoadBalancerService
+```
+ 
+  Modify the __scope__ entry in the yaml definition and replace __Internal__ by __External__.  This scope section tells the ingress operator where to create the load balancer, whether in a private or public subnet in the VPC.
+
+* **Replace the ingress controller**.- Run the following command as an administrator, the execution takes a couple minutes while the controll plane deletes the internal load balancer and creates a new external one.
+
+```shell
+ $ oc replace --force --wait -f default-ingress-controller.yaml
+ ingresscontroller.operator.openshift.io "default" deleted
+ ingresscontroller.operator.openshift.io/default replaced
+```
+
+ The events in the openshift-ingress and openshift-ingress-operator namespaces, and the logs in the ingress-operator deployment should show the actions being taken to replace the ingress controller.   
+
+```shell
+ $ oc get events -n openshift-ingress-operator
+ $ oc get events -n openshift-ingress
+ $ oc logs deployment/ingress-operator -c ingress-operator -n openshift-ingress-operator
+```
+  After the command has completed the applications should be accesible from the Internet using the URLs defined in its corresponding routes.
+
