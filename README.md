@@ -339,7 +339,7 @@ Now it is possible to access the cluster's web console using the URL `https://co
 
 It is possible to modify the configuration of the OCP cluster to be able to access the applications from the Internet in a permanent way, without the need of tricks like ssh tunnels.
 
-The procedure consists on replacing the internal applications load balancer create by the control plane during installation by a public applications load balancer, and also adding a DNS entry **.apps.<cluster name>** to a public DNS zone hosting the cluster base domain.
+The procedure consists on replacing the internal applications load balancer created by the control plane during installation by a public applications load balancer, and also adding a DNS entry **.apps.[cluster name]** to a public DNS zone hosting the cluster base domain.
 
 * **Create public subnets**.- If the cluster does not already have a public subnet in every availability zone where a private subnet already exist, these must be created, each public subnet must get a CIDR network space that is free, not being used by another subnet, within the VPC CIDR space.  Each public subnet must have an association with a route table that has a default route to the VPC's Internet Gateway.
 
