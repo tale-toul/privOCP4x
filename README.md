@@ -345,9 +345,9 @@ The procedure consists on replacing the internal applications load balancer crea
 
 * **Put the public subnets under OCP control**.- The OCP cluster, being private, does not know that it must take control of a set of public subnets.  To make the cluster aware of the public subnets, a particular tag must be added to the subnets.  The tag is created for most of the AWS resources during cluster installation and has the format **kubernetes.io/cluster/[clustername]-[random string]=shared**.  The particular value for a cluster can be obtainend from the private subnets, for example.  This same tag must be added to the public subnets.
 
-* **DNS configuration**.- An public DNS entry with the format __*.apps.[cluster name].[base domain]__ needs to be created in the _base domain_ DNS public zone.  If the _base domain_ DNS zone is not public, a new public zone with the same name must be created, otherwise the DNS names of the applications will not be resolvable from the Internet.  Note that the __*.apps.[cluster name]__ entry is created in the _base domain_ public zone, not in the __[cluster name].[base domain]__ private zone.
+* **Create default ingress controller manifest**.- The default ingress controller provides access to the applications deployed in the cluster and accessed under the DNS domain _*.apps_.  One of the components managed by the ingress controller is an applications load balancer, in the case of a private cluster this load balancer is created in the private subnets and is not accesible from the Internet.  
 
-* **Create default ingress controller manifest**.- The default ingress controller provides access to the applications deployed in the cluster and accessed under in the DNS domain _*.apps_.  One of the components that it creates and controlls is a load balancer, in the case of a private cluster this load balancer is created in the private subnets and is not accesible from the Internet.  Extract the default ingress controller configuration:
+  Extract the default ingress controller configuration:
 
 ```shell
 $ oc get ingresscontroller default -n openshift-ingress-operator -o yaml > default-ingress-controller.yaml
@@ -368,9 +368,9 @@ spec:
     type: LoadBalancerService
 ```
  
-  Modify the __scope__ entry in the yaml definition and replace __Internal__ by __External__.  This scope section tells the ingress operator where to create the load balancer, whether in a private or public subnet in the VPC.
+  Modify the __scope__ entry in the yaml definition and replace __Internal__ by __External__.  The scope section tells the ingress operator where to create the load balancer, whether in the private or public subnets inside the VPC.
 
-* **Replace the ingress controller**.- Run the following command as an administrator, the execution takes a couple minutes while the controll plane deletes the internal load balancer and creates a new external one.
+* **Replace the ingress controller**.- Run the following command as an administrator, the execution takes a couple minutes while the control plane deletes the internal load balancer and creates a new external one.
 
 ```shell
  $ oc replace --force --wait -f default-ingress-controller.yaml
@@ -378,12 +378,18 @@ spec:
  ingresscontroller.operator.openshift.io/default replaced
 ```
 
- The events in the openshift-ingress and openshift-ingress-operator namespaces, and the logs in the ingress-operator deployment should show the actions being taken to replace the ingress controller.   
+  The events in the openshift-ingress and openshift-ingress-operator namespaces, and the logs in the ingress-operator deployment should show the actions being taken to replace the ingress controller.   
 
 ```shell
  $ oc get events -n openshift-ingress-operator
  $ oc get events -n openshift-ingress
  $ oc logs deployment/ingress-operator -c ingress-operator -n openshift-ingress-operator
 ```
-  After the command has completed the applications should be accesible from the Internet using the URLs defined in its corresponding routes.
+ Check the status section of the new ingress controller and verify that all conditions are as expected:
+```shell
+ $ oc describe ingresscontroller default
+```
+  A new applications load balancer must exist now, and the old one has been deleted, check it with AWS cli or web console.
+
+* **DNS configuration**.- A public DNS entry with the format __*.apps.[cluster name]__ and value aliased to the DNS name of the public load balancer needs to be added to the _base domain_ DNS public zone.  If the _base domain_ zone is not public, a new public zone with the same name must be created, otherwise the applications DNS names will not be resolvable from the Internet.  Note that the __*.apps.[cluster name]__ entry is created in the _base domain_ public zone, not in the __[cluster name].[base domain]__ private zone.  Now the cluster applications can be accessed from the Internet, including the cluster web console.
 
