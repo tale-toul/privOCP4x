@@ -381,15 +381,15 @@ spec:
   The events in the openshift-ingress and openshift-ingress-operator namespaces, and the logs in the ingress-operator deployment should show the actions being taken to replace the ingress controller.   
 
 ```shell
- $ oc get events -n openshift-ingress-operator
- $ oc get events -n openshift-ingress
- $ oc logs deployment/ingress-operator -c ingress-operator -n openshift-ingress-operator
+ $ oc get events -w -n openshift-ingress-operator
+ $ oc get events -w -n openshift-ingress
+ $ oc logs -f deployment/ingress-operator -c ingress-operator -n openshift-ingress-operator
 ```
  Check the status section of the new ingress controller and verify that all conditions are as expected:
 ```shell
- $ oc describe ingresscontroller default
+ $ oc describe ingresscontroller default -n openshift-ingress-operator
 ```
   A new applications load balancer must exist now, and the old one has been deleted, check it with AWS cli or web console.
 
-* **DNS configuration**.- A public DNS entry with the format __*.apps.[cluster name]__ and value aliased to the DNS name of the public load balancer needs to be added to the _base domain_ DNS public zone.  If the _base domain_ zone is not public, a new public zone with the same name must be created, otherwise the applications DNS names will not be resolvable from the Internet.  Note that the __*.apps.[cluster name]__ entry is created in the _base domain_ public zone, not in the __[cluster name].[base domain]__ private zone.  Now the cluster applications can be accessed from the Internet, including the cluster web console.
+* **DNS configuration**.- Add a public DNS entry with the format __*.apps.[cluster name]__ and value aliased to the DNS name of the just created public load balancer to the _base domain_ DNS public zone.  If the _base domain_ zone is not public, a new public zone with the same name must be created, otherwise the applications DNS names will not be resolvable from the Internet.  Note that the __*.apps.[cluster name]__ entry is created in the _base domain_ public zone, not in the __[cluster name].[base domain]__ private zone.  Now the cluster applications can be accessed from the Internet, including the cluster web console.
 
