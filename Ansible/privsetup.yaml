@@ -27,7 +27,13 @@
           state: present
           username: "{{ subscription_username }}"
           password: "{{ subscription_password }}"
-          pool_ids: 8a85f9833e1404a9013e3cddf99305e6
+          pool_ids: 8a85f99c6c8b9588016c8be0f38a0ee9
+    - name: Enable yum repos
+      rhsm_repository:
+        name:
+          - rhel-7-server-rpms
+          - rhel-7-server-extras-rpms
+        purge: yes
     - name: Copy the installer to bastion
       copy:
         src: installer/openshift-install
