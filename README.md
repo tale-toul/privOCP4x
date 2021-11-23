@@ -225,7 +225,7 @@ Check for any updates in the terraform plugins:
   If you ever set or change modules or backend configuration for Terraform,
   rerun this command to reinitialize your working directory. If you forget, other
   commands will detect it and remind you to do so if necessary.
-```shell
+```
 
 The DNS base domain for the cluster, created by terraform, is built from two variables: the domain defined in dns_domain_ID and the subdomain defined in domain_name.  The cluster domain created by the IPI installer will be created adding the cluster name to the base domain.  For example for a dns_domain_ID referencing "example.com", a domain_name=avery, and cluster_name=tiesto, the base domain is avery.example.com and the cluster domain is tiesto.avery.example.com: 
 
