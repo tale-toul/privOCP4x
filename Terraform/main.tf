@@ -1,13 +1,11 @@
 #PROVIDERS
 provider "aws" {
   region = var.region_name
-  version = "~> 2.49"
   shared_credentials_file = "aws-credentials.ini"
 }
 
 #This is only used to generate random values
 provider "random" {
-  version = "~> 2.2"
 }
 
 #Provides a source to create a short random string 
@@ -305,7 +303,7 @@ resource "aws_key_pair" "ssh-key" {
 
 #Bastion host
 resource "aws_instance" "tale_bastion" {
-  ami = var.rhel7-ami[var.region_name]
+  ami = var.rhel-ami[var.region_name]
   instance_type = "m4.large"
   subnet_id = aws_subnet.subnet_pub.0.id
   vpc_security_group_ids = local.bastion_security_groups
@@ -323,7 +321,7 @@ resource "aws_instance" "tale_bastion" {
 }
 
 #ROUTE53 CONFIG
-#Datasource for rhcee.support. route53 zone
+#Datasource for route53 zone
 data "aws_route53_zone" "domain" {
   zone_id = var.dns_domain_ID
 }

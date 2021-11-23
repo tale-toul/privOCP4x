@@ -9,7 +9,7 @@
       with_items: "{{ groups['all'] }}"
     - name: Save terraform variables to a file
       when: terraform_created is defined and terraform_created|bool
-      shell: terraform output |tr '=' ':' > ../../privOCPVPC/Ansible/group_vars/all/terraform_outputs.var
+      shell: terraform output |tr '=' ':' > ../Ansible/group_vars/all/terraform_outputs.var
       args:
         chdir: ../Terraform
 - name: Setup bastion host
@@ -27,13 +27,12 @@
           state: present
           username: "{{ subscription_username }}"
           password: "{{ subscription_password }}"
-          pool_ids: 8a85f99c6c8b9588016c8be0f38a0ee9
+          pool_ids: "{{ pool_id }}" 
     - name: Enable yum repos
       rhsm_repository:
-        name:
-          - rhel-7-server-rpms
-          - rhel-7-server-extras-rpms
+        name: "{{ repositories }}"
         purge: yes
+      when: repositories is defined
     - name: Copy the installer to bastion
       copy:
         src: installer/openshift-install

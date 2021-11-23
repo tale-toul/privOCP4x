@@ -38,29 +38,29 @@ variable "ssh-keyfile" {
 variable "dns_domain_ID" {
   description = "Zone ID for the route 53 DNS domain that will be used for this cluster"
   type = string
-  default = "Z1UPG9G4YY4YK6"
+  default = "Z0246469SRQO0B41TRDD"
 }
 
-variable "rhel7-ami" {
-  description = "AMI on which the EC2 instances are based on, depends on the region"
+variable "rhel-ami" {
+  description = "RHEL 8 AMI on which the EC2 instances are based on, depends on the region"
   type = map
   default = {
-    eu-central-1   = "ami-0b5edb134b768706c"
-    eu-west-1      = "ami-0404b890c57861c2d"
-    eu-west-2      = "ami-0fb2dd0b481d4dc1a"
-    eu-west-3      = "ami-0dc7b4dac85c15019"
-    eu-north-1     = "ami-030b10a31b2b6df19"
-    us-east-1      = "ami-0e9678b77e3f7cc96"
-    us-east-2      = "ami-0170fc126935d44c3"
-    us-west-1      = "ami-0d821453063a3c9b1"
-    us-west-2      = "ami-0c2dfd42fa1fbb52c"
-    sa-east-1      = "ami-09de00221562b0155"
-    ap-south-1     = "ami-0ec8900bf6d32e0a8"
-    ap-northeast-1 = "ami-0b355f24363d9f357"
-    ap-northeast-2 = "ami-0bd7fd9221135c533"
-    ap-southeast-1 = "ami-097e78d10c4722996"
-    ap-southeast-2 = "ami-0f7bc77e719f87581"
-    ca-central-1   = "ami-056db5ae05fa26d11"
+    eu-central-1   = "ami-0f54a8b4f2be0a11e"
+    eu-west-1      = "ami-0f5f1e6dd6490385e"
+    eu-west-2      = "ami-0e2f4eb17efb62d46"
+    eu-west-3      = "ami-00c70bf4113ead0a2"
+    eu-north-1     = "ami-0b564c79c2b0f8b15"
+    us-east-1      = "ami-06644055bed38ebd9"
+    us-east-2      = "ami-0d871ca8a77af2948"
+    us-west-1      = "ami-0032e6c1375c31695"
+    us-west-2      = "ami-056b3ef335ef4f117"
+    sa-east-1      = "ami-01384716b0c9ea74e"
+    ap-south-1     = "ami-031711279ded7adf0"
+    ap-northeast-1 = "ami-0c40556818e60c409"
+    ap-northeast-2 = "ami-0eb218869d3d2d7e7"
+    ap-southeast-1 = "ami-0cebc9110ef246a50"
+    ap-southeast-2 = "ami-01e4b9dd23da1fa54"
+    ca-central-1   = "ami-0a82febc5032feccc"
   }
 }
 

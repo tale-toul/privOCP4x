@@ -22,7 +22,7 @@
 
 ## Introduction
 
-Create a VPC on AWS and deploy an OCP 4.3 cluster in it, this cluster is not directly accessible from the Internet, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
+Create a VPC on AWS and deploy a private  OCP 4 cluster on it. The cluster bein private is not directly accessible from the Internet, application and API load balancers are created in the private subnets, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
 [Reference documentation](https://docs.openshift.com/container-platform/4.3/installing/installing_aws/installing-aws-private.html#installing-aws-private)
 
@@ -40,23 +40,57 @@ The installation of the whole cluster is divided in 3 steps, click the following
 
 If the cluster is to be deployed in an existing VPC, possibly sharing it with other clusters, the terraform creation part will be skipped and only the Ansible part will be run.
 
-One thing to keep in mind is that two or more cluster can be installed in the same VPC, but the DNS zones must be different for each one if these are OCP v4 public clusters; they can share the same VPC and DNS zone if one of the clusters is v3 and the other is v4.  A private OCP v4 cluster could be deployed on a different VPC using the same private DNS zone as another OCP v4 cluster, because the private cluster does not create public resources.  
+One thing to keep in mind is that two or more cluster can be installed in the same VPC, but the DNS zones must be different for each one if these are OCP v4 public clusters. The clusters can share the same VPC and DNS zone if one of them is v3 and the other is v4.  A private OCP v4 cluster could be deployed on a different VPC using the same private DNS zone as another OCP v4 cluster, because the private cluster does not create public resources.  
 
 
-There are some requirements:
-
-* A bastion host must be running in the VPC and accesible from the ansible control host, and the ssh key to connect to it must be available.
+The basic requirements are:
 
 * The following ansible variables must be defined either in a file located in the directory **Ansible/group_vars/all/**, the name of the file is not important; or appended as extra variables to the ansible command.  When creating the infrastructure with terraform, most of these variables are defined as output vars, but in this case they need to be provided by other means to the ansible playbook that prepares the cluster installation environment:
 
-  * terraform_created.- Boolean defining if the infrastructure was created by terraform and therefore ansible can read the variables from it.  Default values is true.  Use _false_ when deploying on an existing VPC
-  * base_dns_domain.- String defining the base domain of your cloud provider.  The full DNS name for your cluster is a combination of the **base domain** and *cluster_name* parameters that uses the <cluster_name>.<baseDomain> format.  The subdomain will be created but the parent domain must exist, for example for abbyext.example.com, example.com must already exist, and abbyext will be created. The DNS zone <cluster_name>.<baseDomain> is a private zone, records will be added to this zone only, not the public **base domain**.
-  * enable_proxy.- Boolean defining if a proxy will be setup as the only means to access the Internet from the cluster.  Default is false, no proxy is created and the cluster will try to access the Internet directly.  If set to true a proxy will be setup on the bastion and the cluster will access the Internet through it.
-  * availability_zones.- List of availability zones where the VPC has public and private subnets and where cluster nodes will be located.  This list does not need to include all availability zones, only the ones where nodes will be placed.
-  * cluster_name.- String defining a name for the cluster.
-  * vpc_cidr.- Network address space of the VPC.
-  * region_name.- The AWS region name where the VPC resides.
-  * private_subnets.- List of _private_ subnet ids already existing in the VPC where cluster components will be created. These subnets must exist in the availability zones declared with the variable *availability_zones* in the same command line.
+  * terraform_created.- Boolean defining if the infrastructure was created by terraform and therefore ansible can read the variables from it.  Default values is true.  Use _false_ when deploying on an existing VPC:
+```
+terraform_created: true
+```
+  * base_dns_domain.- String defining the base domain of your cloud provider.  The full DNS name for your cluster is a combination of the **base domain** and *cluster_name* parameters that uses the <cluster_name>.<baseDomain> format.  The subdomain will be created but the parent domain must exist, for example for abbyext.example.com, example.com must already exist, and abbyext will be created. The DNS zone <cluster_name>.<baseDomain> is a private zone, records will be added to this zone only, not the public **base domain**.  This variable by default is generated by Terraform:
+```
+base_dns_domain : "abbyext.example.com"
+```
+  * enable_proxy.- Boolean defining if a proxy will be setup as the only means to access the Internet from the cluster.  Default is false, no proxy is created and the cluster will try to access the Internet directly.  If set to true a proxy will be setup on the bastion and the cluster will access the Internet through it.  This variable by default is generated by Terraform:
+```
+enable_proxy : false
+```
+  * availability_zones.- List of availability zones where the VPC has public and private subnets and where cluster nodes will be located.  This list does not need to include all availability zones, only the ones where nodes will be placed.  This variable by default is generated by Terraform:
+```
+availability_zones : [
+  "eu-west-2a",
+  "eu-west-2b",
+  "eu-west-2c",
+]
+```
+  * cluster_name.- String defining a name for the cluster.  This variable by default is generated by Terraform:
+```
+cluster_name : "abbyext"
+```
+  * vpc_cidr.- Network address space of the VPC. This variable by default is generated by Terraform:
+```
+vpc_cidr : "172.20.0.0/16"
+```
+  * region_name.- The AWS region name where the VPC resides. This variable by default is generated by Terraform:
+```
+region_name : "eu-west-2"
+```
+  * private_subnets.- List of _private_ subnet ids already existing in the VPC where cluster components will be created. These subnets must exist in the availability zones declared with the variable *availability_zones* in the same command line.  This variable by default is generated by Terraform:
+```
+private_subnets : [
+  "subnet-02fd813cfffe1b838",
+  "subnet-028c6f7b62139adb9",
+  "subnet-03974dac9438ff8da",
+]
+```
+  * ssh-keyfile.- Name of the file containing the public part of the ssh key to deploy to the bastion host:
+```
+ssh-keyfile: ocp-ssh.pub
+```
 
 An example execution with the variables defined on the command like follows:
 
@@ -72,9 +106,9 @@ When the variables are defined follow the instruction in the following sections:
 
 ## VPC creation
 
-Create a VPC in AWS using **terraform** to deploy a private OCP 4.3 cluster in it.
+Create a VPC in AWS using **terraform** to deploy a private OCP 4 cluster on it.
 
-In addition to the VPC network components, a bastion host in a public subnet inside the private VPC is required to run the intallation program from it.  This bastion host can also take the role of proxy server for the cluster nodes in the private subnets.
+In addition to the VPC network components, a bastion host in a public subnet inside the private VPC is required to run the intallation program from it; the bastion is placed in a public subnet so it can be accessed via ssh, and the Openshift installer is run from this bastion host so the names in the private DNS domain can be resolved.  This bastion host can also take the role of proxy server for the cluster nodes in the private subnets.
 
 ### Terraform installation
 
@@ -130,7 +164,7 @@ resource "aws_security_group" "sg-squid" {
 bastion_security_groups = var.enable_proxy ? concat([aws_security_group.sg-ssh-in.id, aws_security_group.sg-all-out.id], aws_security_group.sg-squid[*].id) : [aws_security_group.sg-ssh-in.id, aws_security_group.sg-all-out.id]
 ...
 resource "aws_instance" "tale_bastion" {
-  ami = var.rhel7-ami[var.region_name]
+  ami = var.rhel-ami[var.region_name]
   instance_type = "m4.large"
   subnet_id = aws_subnet.subnet_pub.0.id
   vpc_security_group_ids = local.bastion_security_groups
@@ -159,12 +193,43 @@ resource "aws_route" "internet_access" {
 
 ### Deploying the infrastructure with terraform
 
-Terraform is used to create the infrastructure components of the VPC, some of these components can be adjusted via the use of variables defined in the file _Terrafomr/input-vars.tf_, like the number of subnets, if a proxy will be used to manage connections from the cluster to the Internet, the name of the cluster, the name of the DNS subdomain to use, etc.  
+Terraform is used to create the infrastructure components of the VPC, some of these components can be adjusted via the use of variables defined in the file _Terrafomr/input-vars.tf_ like: the number of subnets to be created; if a proxy will be used to manage connections from the cluster to the Internet; the name of the cluster; the name of the DNS subdomain to use, etc.  
+
+Check for any updates in the terraform plugins:
+
+```shell
+  $ cd Terraform
+  $ terraform init
+  
+  Initializing the backend...
+  
+  Initializing provider plugins...
+  - Finding latest version of hashicorp/aws...
+  - Finding latest version of hashicorp/random...
+  - Installing hashicorp/aws v3.65.0...
+  - Installed hashicorp/aws v3.65.0 (signed by HashiCorp)
+  - Installing hashicorp/random v3.1.0...
+  - Installed hashicorp/random v3.1.0 (signed by HashiCorp)
+  
+  Terraform has created a lock file .terraform.lock.hcl to record the provider
+  selections it made above. Include this file in your version control repository
+  so that Terraform can guarantee to make the same selections by default when
+  you run "terraform init" in the future.
+  
+  Terraform has been successfully initialized!
+  
+  You may now begin working with Terraform. Try running "terraform plan" to see
+  any changes that are required for your infrastructure. All Terraform commands
+  should now work.
+  
+  If you ever set or change modules or backend configuration for Terraform,
+  rerun this command to reinitialize your working directory. If you forget, other
+  commands will detect it and remind you to do so if necessary.
+```shell
 
 The DNS base domain for the cluster, created by terraform, is built from two variables: the domain defined in dns_domain_ID and the subdomain defined in domain_name.  The cluster domain created by the IPI installer will be created adding the cluster name to the base domain.  For example for a dns_domain_ID referencing "example.com", a domain_name=avery, and cluster_name=tiesto, the base domain is avery.example.com and the cluster domain is tiesto.avery.example.com: 
 
 ```shell
-$ cd Terraform
 $ terraform apply -var="subnet_count=2" -var="domain_name=kali" -var="cluster_name=olivkaj" -var="enable_proxy=true"
 ```
 
@@ -188,7 +253,7 @@ To successfully deploy the cluster some elements are required besides the AWS in
 
 * Installer program.- This can be downloaded from the same [site](https://cloud.redhat.com/openshift/install) as the pull secret
 
-The setup process can be automated using the ansible playbook **privsetup.yaml**, this playbook prepares de bastion host created with terraform, registering it with Red Hat; copying the OCP installer and _oc_ command to it, and creating the install-config.yaml file generated from a template using output variables from terraform.
+The setup process can be automated using the ansible playbook **privsetup.yaml**, this playbook prepares de bastion host created by terraform, registering it with Red Hat; copying the OCP installer and _oc_ command to it, and creating the install-config.yaml file generated from a template using output variables from terraform.
 
 ### Proxy configuration
 
@@ -221,15 +286,19 @@ Review the file **group_vars/all/cluster-vars** and modify the value of the vari
 * master_nodes.- number of master nodes to create, by default 3
 * master_instance_type: The type of AWS instance that will be used to create the master nodes, by default m4.large m4.xlarge 
 
-Create a file in group_vars/all/<filename> (any filename will work) with the credentials of a Red Hat portal user with permission to register a host (this may not be absolutely neccessary since the playbook does not install any packages in the bastion host). An example of the contents of the file:
+Create a file in group_vars/all/<filename> (any filename will do) with the credentials of a Red Hat portal user with permission to register a host (this may not be absolutely neccessary since the playbook does not install any packages in the bastion host), and the pool id to attach the host to. An example of the contents of the file:
 
 ```
 subscription_username: algol80
 subscription_password: YvCohpUKjEHx
+pool_id: a85f9833e140a90133cddf95a05
 ```
-It is a good idea to encrypt this file with ansible-vault
+It is a good idea to encrypt this file with ansible-vault, for example to encrypt the file __secrets__ with the password stored in the file __vault-id__ use a command like:
+```
+$ ansible-vault encrypt --vault-id vault-id secrets
+```
 
-Create the inventory file with the _bastion_ group and the name of the bastion host:
+Create the inventory file in the Ansible directory with the _bastion_ group and the name of the bastion host for the public DNS defined earlier:
 
 ```
 [bastion]
@@ -243,7 +312,13 @@ Uncompress the client in the Ansible directory
 
 Uncompress the installer in Ansible/installer/ 
 
-Add the ssh key used by terraform to the ssh agent:
+The ansible playbook, in the definition of the install-config.j2 template, expects to find the contents of the public part of the ssh key in a file called __ocp-ssh.pub__ in the Terraform directory:
+```
+$ ls Terraform/ocp-ssh.pub 
+Terraform/ocp-ssh.pub
+```
+
+Add the private ssh key associated with the public key used by terraform to the ssh agent:
 
 ```shell
 $ ssh-add ../Terraform/ocp-ssh
@@ -290,13 +365,17 @@ pullSecret: '{{ lookup('file', './pull-secret') }}'
 
 When the playbook finishes, ssh into the bastion host to run the cluster installation.  The installation must be executed from a host in the same VPC that was created by terraform, otherwise it will not be able to resolve the internal DNS names of the components or even access to the API entry point.
 
-Run the installer from the privOCP4 directory, it will prompt for the AWS credentials that will be used to create all resources:
+Run the installer from the privOCP4 directory, it will prompt for the AWS credentials that it requires to create all resources, after that the installer starts creating the cluster:
 
 ```shell
 $ cd privOCP4
 $ ./openshift-install create cluster --dir ocp4 --log-level=info
 ? AWS Access Key ID [? for help] XXXXX
 ? AWS Secret Access Key [? for help] ****************************************
+INFO Writing AWS credentials to "/home/ec2-user/.aws/credentials" (https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) 
+INFO Consuming Install Config from target directory 
+INFO Creating infrastructure resources...
+...
 ```
 
 ## Cluster decommissioning instructions
@@ -318,22 +397,24 @@ $ terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_
 
 ## Accessing the cluster
 
-Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory, or a web browser for accessing the applications.
+Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory.
 
-It is also possible to access the cluster applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  Any hostname in the apps subdomain is valid:
+It is possible to access the cluster web UI and applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  
+Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root, running the commands with sudo does not work.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  The IP 172.20.148.245 in the example is that of the applications load balancer. Any hostname in the apps subdomain is valid:
 
 ```
+ # su -
  # ssh-agent bash
  # ssh-add Terraform/ocp-ssh
- # ssh -fN -L 80:console-openshift-console.apps.lentisco.tangai.example.com:80 ec2-user@bastion.tangai.rhcee.support
- # ssh -fN -L 443:console-openshift-console.apps.lentisco.tangai.example.com:443 ec2-user@bastion.tangai.rhcee.support
+ # ssh -fN -L localhost:80:172.20.148.245:80 ec2-user@bastion.tangai.rhcee.support
+ # ssh -fN -L localhost:443:172.20.148.245::443 ec2-user@bastion.tangai.rhcee.support
 ```
-Next add entries to /etc/hosts with the names that will be used to access the URL, for example to access the web console: 
+Next, add entries to /etc/hosts with the names that will be used to access the URL, for example to access the web console: 
 ```
 127.0.0.1 console-openshift-console.apps.lentisco.tangai.rhcee.support
 127.0.0.1 oauth-openshift.apps.lentisco.tangai.rhcee.support
 ```
-Now it is possible to access the cluster's web console using the URL `https://console-openshift-console.apps.lentisco.tangai.rhcee.support`
+Now it is possible to access the cluster's web console from the local host using the URL `https://console-openshift-console.apps.lentisco.tangai.rhcee.support`
 
 ### Turning the private cluster public
 
