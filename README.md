@@ -403,7 +403,7 @@ It is possible to access the cluster web UI and applications from outside the VP
 Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root, running the commands with sudo does not work.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  The IP 172.20.148.245 in the example is that of the applications load balancer. Any hostname in the apps subdomain is valid:
 
 ```
- # su -
+ $ su -
  # ssh-agent bash
  # ssh-add Terraform/ocp-ssh
  # ssh -fN -L localhost:80:172.20.148.245:80 ec2-user@bastion.tangai.rhcee.support
