@@ -12,49 +12,55 @@
       shell: terraform output |tr '=' ':' > ../Ansible/group_vars/all/terraform_outputs.var
       args:
         chdir: ../Terraform
+    - name: Load terraform output variables
+      include_vars:
+        file: group_vars/all/terraform_outputs.var
+    - name: Update inventory file
+      blockinfile:
+        path: inventory
+        block: "{{ bastion_dns_name }}"
+        insertafter: "^\\[bastion\\]$"
+    - name: Reload inventory
+      meta: refresh_inventory
 - name: Setup bastion host
   hosts: bastion
+  gather_facts: no
   tasks:
     - name: Load terraform output variables
       when: terraform_created is defined and terraform_created|bool
       include_vars:
         file: group_vars/all/terraform_outputs.var
+    - name: Wait for EC2 instance connection to become available
+      wait_for_connection:
+        timeout: 300
     - name: Assing a FQDN name to the bastion host
       hostname:
           name: "{{ inventory_hostname }}"
-    - name: Register server with Red Hat
-      redhat_subscription:
-          state: present
-          username: "{{ subscription_username }}"
-          password: "{{ subscription_password }}"
-          pool_ids: "{{ pool_id }}" 
     - name: Enable yum repos
       rhsm_repository:
         name: "{{ repositories }}"
         purge: yes
       when: repositories is defined
-    - name: Copy the installer to bastion
-      copy:
-        src: installer/openshift-install
-        dest: privOCP4/
-        owner: ec2-user
-        mode: '0755'
-    - name: Copy the oc command to bastion
-      copy:
-        src: oc
-        dest: privOCP4/
-        owner: ec2-user
-        mode: '0755'
-    - name: Create ocp4 directory
+    - name: Download oc client file
+      unarchive:
+        src: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ ocp_version }}/openshift-client-linux.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+    - name: Download Openshift installer
+      unarchive:
+        src: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ ocp_version }}/openshift-install-linux.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+    - name: Create {{ cluster_name }} directory
       file:
-        path: privOCP4/ocp4
+        path: privOCP4/{{ cluster_name }}
         state: directory
         owner: ec2-user
         mode: '0750'
     - name: Render install-config jinja2 template
       template:
         src: install-config.j2
-        dest: privOCP4/ocp4/install-config.yaml
+        dest: privOCP4/{{ cluster_name }}/install-config.yaml
         mode: 0644
     - name: Activate squid proxy 
       block:

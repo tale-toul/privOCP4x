@@ -298,13 +298,34 @@ resource "aws_security_group" "sg-all-out" {
 ##SSH key
 resource "aws_key_pair" "ssh-key" {
   key_name = "ssh-key-${random_string.sufix_name.result}"
-  public_key = file("${path.module}/${var.ssh-keyfile}")
+  public_key = file("${path.module}/${var.ssh_keyfile}")
+}
+
+#AMI
+data "aws_ami" "rhel8" {
+  most_recent = true
+  owners = ["309956199498"]
+
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name = "name"
+    values = ["RHEL*8.5*"]
+  }
 }
 
 #Bastion host
 resource "aws_instance" "tale_bastion" {
-  ami = var.rhel-ami[var.region_name]
-  instance_type = "m4.large"
+  ami = data.aws_ami.rhel8.id
+  instance_type = "t3.xlarge"
   subnet_id = aws_subnet.subnet_pub.0.id
   vpc_security_group_ids = local.bastion_security_groups
   key_name= aws_key_pair.ssh-key.key_name
@@ -408,4 +429,8 @@ output "private_subnet_cidr_block" {
 output "enable_proxy" {
   value = var.enable_proxy
   description = "Is the proxy enabled or not?"
+}
+output "ssh_keyfile" {
+  value = var.ssh_keyfile
+  description = "Filename containing the ssh public key injected to all nodes in the cluster, and the bastion host"
 }

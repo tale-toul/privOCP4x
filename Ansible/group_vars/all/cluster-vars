@@ -1,5 +1,6 @@
 terraform_created: true
 compute_nodes: 3
-compute_instance_type: m4.large 
+compute_instance_type: m5.xlarge
 master_nodes: 3
-master_instance_type: m4.xlarge 
+master_instance_type: m5.xlarge
+ocp_version: 4.10.10

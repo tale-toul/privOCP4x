@@ -47,6 +47,6 @@ platform:
         - {{ item }}
 {% endfor %}
 publish: Internal
-pullSecret: '{{ lookup('file', './pull-secret') }}'
+pullSecret: '{{ lookup('file', 'pull-secret') }}'
 sshKey: |
-  {{ lookup('file', '../Terraform/ocp-ssh.pub') }}
+  {{ lookup('file', '../Terraform/'+ssh_keyfile) }}
