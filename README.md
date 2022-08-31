@@ -217,7 +217,7 @@ Check for any updates in the terraform plugins:
 ```
 The private full DNS domain for the cluster is created by adding the cluste name to the external domain name.  The private internal and external domains are called the same.  For example if cluster_name=ocp and the domain associated with dns_domain_ID is redhat.com, the full DNS private domain is ocp.redhat.com.
 
-Make sure the asw account credentials are defined in the file $HOME/.aws/credentials or in the environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY as explained in terraform [documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#shared-configuration-and-credentials-files)
+Make sure the aws account credentials are defined in the file $HOME/.aws/credentials or in the environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY as explained in terraform [documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#shared-configuration-and-credentials-files)
 
 Run the terraform apply command with the variable values desired:
 
@@ -382,11 +382,13 @@ Deleting the cluster is a two step process:
 $ openshift-install destroy cluster --dir privOCP4/ocp4 --log-level=info
 ```
 
-* Delete the components created by terraform,  use the `terraform destroy` command.  This command should include the same variable definitions that were used during cluster creation, not all variables are strictly requiered though.  This command is run from the same host and directory from which the `terraform apply` command was run:
+* Delete the components created by terraform,  use the `terraform destroy` command.  This command should include the same variable definitions that were used during cluster creation, or reference the variable file if one was used.   This command is run from the same host and directory from which the `terraform apply` command was run:
 
 ```shell
-$ cd Terraform
-$ terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_name=olivkaj" -var="enable_proxy=true"
+cd Terraform
+terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_name=olivkaj" -var="enable_proxy=true"
+#or
+terraform destroy -var-file ocp_priv.vars
 ```
 
 ## Accessing the cluster
