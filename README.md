@@ -26,7 +26,7 @@ Deploy a private OCP 4 cluster in an existing VPC on AWS.  The terraform templat
 
 The cluster being private is not directly accessible from the Internet, application and API load balancers are created in the private subnets, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
-This project has been tested up to version OCP 4.10
+This project has been tested up to version OCP 4.11
 
 [Reference documentation](https://docs.openshift.com/container-platform/4.3/installing/installing_aws/installing-aws-private.html#installing-aws-private)
 
@@ -360,7 +360,7 @@ Make a backup copy of the install-config.yaml file, because the installer destro
 ```shell
 cp privOCP4/ocp4/install-config.yaml .
 ```
-Run the installer as in the example bellow, it will prompt for the AWS credentials that it requires to create AWS resources, after that the installer starts creating the cluster:
+Run the installer as in the example bellow, it will prompt for the AWS credentials that it requires to create AWS resources, after that the installer proceed with the OCP installation:
 
 ```shell
 $ openshift-install create cluster --dir privOCP4/ocp4 --log-level=info
@@ -391,7 +391,7 @@ $ terraform destroy -var="subnet_count=2" -var="domain_name=kali" -var="cluster_
 
 ## Accessing the cluster
 
-Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host using the *oc* client copied into the privOCP4 directory.
+Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host, using the *oc* client copied into the privOCP4 directory.
 
 It is possible to access the cluster web UI and applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  
 Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root, running the commands with sudo does not work.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  The IP 172.20.148.245 in the example is that of the applications load balancer. Any hostname in the apps subdomain is valid:
