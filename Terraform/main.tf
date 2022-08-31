@@ -1,7 +1,15 @@
 #PROVIDERS
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+#      version = "4.28.0"
+    }
+  }
+}
+
 provider "aws" {
   region = var.region_name
-  shared_credentials_file = "aws-credentials.ini"
 }
 
 #This is only used to generate random values

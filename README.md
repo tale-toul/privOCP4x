@@ -22,7 +22,7 @@
 
 ## Introduction
 
-Deploy a private OCP 4 cluster in an existing VPC on AWS.  The terraform template creates the VPC infrastructure, but a pre-existing VPC can be used.
+Deploy a private OCP 4 cluster in an existing VPC on AWS.  The terraform template creates the VPC infrastructure, although a pre-existing VPC can be used.
 
 The cluster being private is not directly accessible from the Internet, application and API load balancers are created in the private subnets, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
@@ -116,25 +116,10 @@ In addition to the VPC network components, a bastion host in a public subnet ins
 
 ### Terraform installation
 
-The installation of terraform is as simple as downloading a zip compiled binary package for your operating system and architecture from:
+[Terraform](https://www.terraform.io/) must be installed in the local host.
+  The terraform installation is straight forward, just follow the instructions for your operating system in the [terraform site](https://www.terraform.io/downloads.html)
 
-`https://www.terraform.io/downloads.html`
-
-Then unzip the file:
-
-```shell
- # unzip terraform_0.11.8_linux_amd64.zip 
-Archive:  terraform_0.11.8_linux_amd64.zip
-  inflating: terraform
-```
-
-Place the binary somewhere in your path:
-
-```shell
- # cp terraform /usr/local/bin
-```
-
-Check that it is working:
+Verify that terraform is working:
 
 ```shell
  # terraform --version
@@ -201,25 +186,25 @@ Terraform is used to create the infrastructure components of the VPC, some of th
 
 * **region_name**.- The AWS region where the infrastructure is created
 
-Default value: eu-west-1
+     Default value: eu-west-1
 
 * **dns_domain_ID**.- This is the Hosted zone ID in route53 for the public DNS zone where the bastion hostname is created
 
-* **domain_name**.- Public DNS subdomain to access bastion host DNS name.  The full public DNS domain is built as domain_name + dns_domain_ID.name.  For domain_name=tale and dns_domain_ID.name=redhat.com, the full DNS domain is tale.redhat.com.  
+* **domain_name**.- Public DNS subdomain to access bastion host DNS name.  The full public DNS domain is built as domain_name + dns_domain_ID.name.  For domain_name=tale and dns_domain_ID.name=redhat.com, the full DNS domain is tale.redhat.com.  This subdomain is created by terraform if it does not exist.
 
-Default value: tale
+     Default value: tale
 
 * **cluster_name**.- Used in the install-config file to define a name for the cluster.
 
-Default value: ocp
+     Default value: ocp
 
 * **ssh_keyfile**.- Name of the file with public part of the SSH key to transfer to the EC2 instances
 
-Default value: ocp-ssh.pub
+     Default value: ocp-ssh.pub
 
 * **enable_proxy**.- Boolean value to determine if a proxy is to be deployed (true) or not (false).  If the proxy is enabled, all outgoing communications from the cluster will go through it.  The proxy is later set up with ansible.
 
-Default value: false
+     Default value: false
 
 Check for any updates in the terraform plugins:
 
@@ -232,6 +217,8 @@ Check for any updates in the terraform plugins:
 ```
 The private full DNS domain for the cluster is created by adding the cluste name to the external domain name.  The private internal and external domains are called the same.  For example if cluster_name=ocp and the domain associated with dns_domain_ID is redhat.com, the full DNS private domain is ocp.redhat.com.
 
+Make sure the asw account credentials are defined in the file $HOME/.aws/credentials or in the environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY as explained in terraform [documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#shared-configuration-and-credentials-files)
+
 Run the terraform apply command with the variable values desired:
 
 ```shell
@@ -243,22 +230,22 @@ Save the value of the variables used in this step because the same values are re
 $ echo "!!" > terraform_apply.txt
 ```
 
-Alternatively the variable assigments can be added to a file and the file can be called in the terraform command with the -var-file option:
-```shell
+Alternatively the variable assigments can be defined in a file 
+```
 cat ocp_priv.vars 
 region_name = "eu-west-3"
 domain_name = "eagle"
 cluster_name = "amiga"
 ssh_keyfile = "upi-ssh.pub"
-```shell
-
-```shell
+```
+The file can be called in the terraform command with the -var-file option:
+```
 terraform apply -var-file ocp_priv.vars
 ```
 
 ## Bastion setup with Ansible
 
-To successfully deploy the cluster some elements are required besides the AWS infrastructure created before:
+To successfully deploy the cluster some elements are required besides the AWS infrastructure created earlier:
 
 * Permanent credentials for an AWS account
 
@@ -309,7 +296,12 @@ Download the pull secret from [here](https://cloud.redhat.com/openshift/install)
 Add the private ssh key associated with the public key used by terraform to the ssh agent:
 
 ```shell
-$ ssh-add ../Terraform/ocp-ssh
+ssh-add ../Terraform/ocp-ssh
+```
+
+The inventory file is updated by the ansible playbook, there is no need to create one.
+```
+touch inventory
 ```
 
 Run the playbook:
@@ -351,7 +343,17 @@ pullSecret: '{{ lookup('file', './pull-secret') }}'
 
 ## OCP cluster deployment
 
-When the playbook finishes, ssh into the bastion host to run the cluster installation.  The installation must be executed from a host in the same VPC that was created by terraform, otherwise it will not be able to resolve the internal DNS names of the components or even access the API endpoint.
+Once the ansible playbook has completed successfully, ssh into the bastion host to run the cluster installation.  The installation must be executed from a host in the same VPC that was created by terraform, otherwise it will not be able to resolve the internal DNS names of the components or even access the API endpoint.
+
+To get the FQDNS name of the bastion run the command:
+```
+terraform output bastion_dns_name
+ "bastion.gengi.example.com"
+```
+Now ssh into the bastion host, using the private ssh key for the public key injected into the nodes:
+```
+ssh -i ocp-ssh ec2-user@bastion.gengi.example.com
+```
 
 Make a backup copy of the install-config.yaml file, because the installer destroyes it when it runs.
 
@@ -398,8 +400,8 @@ Create a tunnel from a host outside the VPC, through the bastion, to the interna
  $ su -
  # ssh-agent bash
  # ssh-add Terraform/ocp-ssh
- # ssh -fN -L localhost:80:172.20.148.245:80 ec2-user@bastion.tangai.rhcee.support
- # ssh -fN -L localhost:443:172.20.148.245::443 ec2-user@bastion.tangai.rhcee.support
+ # ssh -fN -L localhost:80:172.20.148.245:80 ec2-user@bastion.gengi.example.com
+ # ssh -fN -L localhost:443:172.20.148.245::443 ec2-user@bastion.gengi.example.com
 ```
 Next, add entries to /etc/hosts with the names that will be used to access the URL, for example to access the web console: 
 ```
