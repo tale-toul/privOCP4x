@@ -26,7 +26,7 @@ Deploy a private OCP 4 cluster in an existing VPC on AWS.  The terraform templat
 
 The cluster being private is not directly accessible from the Internet, application and API load balancers are created in the private subnets, the connections from the cluster to the Internet can be configured via NAT gateways or via a proxy server running in a bastion host. 
 
-This project has been tested up to version OCP 4.11
+This project has been tested up to version OCP 4.13
 
 [Reference documentation](https://docs.openshift.com/container-platform/4.3/installing/installing_aws/installing-aws-private.html#installing-aws-private)
 
@@ -206,6 +206,14 @@ Terraform is used to create the infrastructure components of the VPC, some of th
 
      Default value: false
 
+These variables can be defined in at file that is passed to the terrafom apply command:
+```shell
+$ cat infra_vars
+subnet_count=2
+domain_name=kali
+cluster_name=olivkaj
+enable_proxy=true
+```
 Check for any updates in the terraform plugins:
 
 ```shell
@@ -224,7 +232,11 @@ Run the terraform apply command with the variable values desired:
 ```shell
 terraform apply -var="subnet_count=2" -var="domain_name=kali" -var="cluster_name=olivkaj" -var="enable_proxy=true"
 ```
-Save the value of the variables used in this step because the same values are required in case the infrastructure is later destroyed with the **terrafor destroy** command.  In the example the use of !! assumes that no other command has been executed after _terraform apply_:
+If a variable file was defined:
+```shell
+terraform apply -var-file infra_vars
+```
+Save the value of the variables used in this step (not necessary if a variables files was used) because the same values are required in case the infrastructure is later destroyed with the **terrafor destroy** command.  In the example the use of !! assumes that no other command has been executed after _terraform apply_:
 
 ```
 $ echo "!!" > terraform_apply.txt
@@ -395,15 +407,19 @@ terraform destroy -var-file ocp_priv.vars
 
 Once the cluster is up and running, it is only accessible from inside the VPC, for example from the bastion host, using the *oc* client copied into the privOCP4 directory.
 
-It is possible to access the cluster web UI and applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  
-Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root, running the commands with sudo does not work.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  The IP 172.20.148.245 in the example is that of the applications load balancer. Any hostname in the apps subdomain is valid:
+It is possible to access the cluster web console and applications from outside the VPC by creating a temporary ssh tunnel through the bastion host to the internal applications load balancer.  
+Create a tunnel from a host outside the VPC, through the bastion, to the internal apps load balancer with the following commands.  Since the starting point of the tunnel uses priviledged ports, the commands must be run as root, running the commands with sudo does not work.  The ssh private key added to the session must be the same one injected into the nodes by terraform.  
+
+The IP 172.20.148.245 in the example is one of the valid IPs of the applications load balancer. To find out the correct IPs open the Amazon Elastic Compute Cloud (Amazon EC2) console.  In the navigation pane, under Load Balancing, choose Load Balancers.  Under Load balancers, copy the name of the load balancer that you want to find the IP addresses for.  In the navigation pane, under Network & Security, choose Network Interfaces.  Paste the load balancer name that you copied in to the search box. The filtered results show all elastic network interfaces that are associated with the load balancer. You can find the primary private IP address of each elastic network interface in the Primary private IPv4 IP column.
+
+Any hostname in the apps subdomain is valid:
 
 ```
  $ su -
  # ssh-agent bash
  # ssh-add Terraform/ocp-ssh
  # ssh -fN -L localhost:80:172.20.148.245:80 ec2-user@bastion.gengi.example.com
- # ssh -fN -L localhost:443:172.20.148.245::443 ec2-user@bastion.gengi.example.com
+ # ssh -fN -L localhost:443:172.20.148.245:443 ec2-user@bastion.gengi.example.com
 ```
 Next, add entries to /etc/hosts with the names that will be used to access the URL, for example to access the web console: 
 ```
