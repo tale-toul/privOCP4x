@@ -7,7 +7,8 @@ proxy:
   noProxy: {{ vpc_cidr }}
 {% endif %}
 compute:
-- hyperthreading: Enabled
+- architecture: amd64
+  hyperthreading: Enabled
   name: worker
   platform: 
     aws:
@@ -18,6 +19,7 @@ compute:
 {% endfor %}
   replicas: {{ compute_nodes }}
 controlPlane:
+  architecture: amd64
   hyperthreading: Enabled
   name: master
   platform: 
